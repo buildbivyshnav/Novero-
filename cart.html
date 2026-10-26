@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cart — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap"><h1 style="margin:18px 0 6px;font-size:1.4rem">Your cart</h1><div id="items"></div>
+<div class="sum hide" id="sum"><div><span>Subtotal</span><b id="st"></b></div><div><span>Delivery</span><b id="dl"></b></div><div class="tot"><span>Total</span><span id="tt"></span></div>
+<p class="note" style="color:var(--mute)">Free delivery on orders of ₹499 and above. Coupons can be added at checkout.</p>
+<a class="btn p" style="width:100%;text-align:center;margin-top:12px" href="checkout.html">Proceed to checkout</a></div></main>
+<div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("cart.html");let VIEW=[];
+async function draw(){
+  const cart=store.get("cart"),box=$("#items"),sum=$("#sum");
+  if(!cart.length){box.innerHTML='<p class="msg">Your cart is empty. <a href="products.html" style="color:var(--pink);font-weight:700">Start shopping</a></p>';sum.classList.add("hide");VIEW=[];return}
+  let prods;try{prods=await getByIds(cart.map(i=>i.id))}catch(e){box.innerHTML='<p class="msg">Could not load your cart. Please try again.</p>';return}
+  const map=Object.fromEntries(prods.map(p=>[p.id,p])),valid=cart.filter(i=>map[i.id]);
+  if(valid.length!=cart.length){store.set("cart",valid);badges()}
+  VIEW=valid;
+  if(!valid.length)return draw();
+  let sub=0;
+  box.innerHTML=valid.map((it,i)=>{const p=map[it.id],line=final(p)*it.qty;sub+=line;
+    return `<div class="row"><a href="product-details.html?id=${encodeURIComponent(p.id)}"><img src="${esc(p.image_url)}" alt=""></a><div class="rb"><h3>${esc(p.name)}</h3>
+    <div class="price">₹${final(p)}${p.discount_percent?`<s>₹${p.price}</s>`:""}</div>${it.size||it.color?`<small>${[it.size&&"Size: "+esc(it.size),it.color&&esc(it.color)].filter(Boolean).join(" · ")}</small>`:""}
+    <div class="qty"><button data-a="m" data-i="${i}" aria-label="Less">−</button><span>${it.qty}</span><button data-a="p" data-i="${i}" aria-label="More">+</button><button class="rm" data-a="r" data-i="${i}">Remove</button></div></div><b>${inr(line)}</b></div>`}).join("");
+  const fee=sub>=499?0:49;
+  $("#st").textContent=inr(sub);$("#dl").textContent=fee?inr(fee):"FREE";$("#tt").textContent=inr(sub+fee);sum.classList.remove("hide");
+}
+$("#items").addEventListener("click",e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  const l=store.get("cart"),i=+b.dataset.i,a=b.dataset.a;if(!l[i])return;
+  if(a=="m")l[i].qty=Math.max(1,l[i].qty-1);
+  if(a=="p")l[i].qty=Math.min(20,l[i].qty+1);
+  if(a=="r")l.splice(i,1);
+  store.set("cart",l);badges();draw();
+});
+draw();
+</script></body></html>

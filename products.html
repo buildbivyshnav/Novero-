@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shop — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap"><div class="filters">
+<select id="cat" aria-label="Category"><option value="">All categories</option></select>
+<select id="max" aria-label="Max price"><option value="0">Any price</option><option value="500">Under ₹500</option><option value="1000">Under ₹1000</option><option value="1500">Under ₹1500</option></select>
+<select id="sort" aria-label="Sort"><option value="new">Newest</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option><option value="rating">Top rated</option><option value="popular">Most popular</option><option value="deal">Biggest discount</option></select></div>
+<div class="grid" id="g"></div></main><div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>chrome("products.html");
+const P=new URLSearchParams(location.search);
+$("#cat").innerHTML+=CATS.map(c=>`<option>${c}</option>`).join("");
+$("#cat").value=P.get("cat")||"";$("#sort").value=P.get("sort")||"new";
+function run(){load($("#g"),{q:P.get("q")||"",cat:$("#cat").value,max:+$("#max").value,sort:$("#sort").value})}
+["cat","max","sort"].forEach(i=>$("#"+i).onchange=run);run();</script></body></html>

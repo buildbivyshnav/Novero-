@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap"><div id="pd"><div class="spin"></div></div>
+<section id="rv" class="hide"><h2 style="margin:20px 0 8px">Ratings & reviews</h2><div id="rl"></div>
+<form class="form hide" id="rf"><label for="rr">Your rating</label><select id="rr"><option value="5">5 ★ Excellent</option><option value="4">4 ★ Good</option><option value="3">3 ★ Okay</option><option value="2">2 ★ Poor</option><option value="1">1 ★ Bad</option></select>
+<label for="rc">Your review (optional)</label><textarea id="rc" rows="3" maxlength="1000"></textarea><button class="btn p" style="margin-top:12px;border:0">Submit review</button><p class="note" id="rm"></p></form>
+<p id="rlogin" class="note hide"><a href="login.html" style="color:var(--pink);font-weight:700">Log in</a> to write a review.</p></section></main>
+<div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("products.html");
+const pid=new URLSearchParams(location.search).get("id");let P,size="",color="";
+(async()=>{
+  try{P=(await getByIds([pid]))[0]}catch(e){}
+  if(!P){$("#pd").innerHTML='<p class="msg">Product not found. <a href="products.html" style="color:var(--pink);font-weight:700">Back to shop</a></p>';return}
+  document.title=P.name+" — Novero";draw();reviews();
+})();
+function draw(){
+  const w=store.get("wish").includes(P.id),out=P.stock<=0,max=Math.min(10,P.stock);
+  $("#pd").innerHTML=`<div class="pg"><div><img class="main" id="mi" src="${esc(P.image_url)}" alt="${esc(P.name)}">
+  ${P.images.length>1?`<div class="thumbs">${P.images.map((u,i)=>`<img data-t="${esc(u)}" class="${i?"":"on"}" src="${esc(u)}" alt="">`).join("")}</div>`:""}</div>
+  <div><p style="color:var(--mute);font-size:.85rem">${esc(P.category)}</p><h1 style="font-size:1.5rem;letter-spacing:-.02em">${esc(P.name)}</h1>
+  <div class="price" style="font-size:1.4rem;margin:8px 0">₹${final(P)}${P.discount_percent?`<s>₹${P.price}</s><em>${P.discount_percent}% off</em>`:""}</div>
+  <span class="rate">${P.rating?esc(P.rating)+" ★ ("+P.review_count+")":"New"}</span>
+  <p style="margin:14px 0;line-height:1.6">${esc(P.description||"")}</p>
+  ${P.sizes.length?`<strong>Size</strong><div class="chips" id="sz">${P.sizes.map(s=>`<button type="button" data-s="${esc(s)}">${esc(s)}</button>`).join("")}</div>`:""}
+  ${P.colors.length?`<strong>Colour</strong><div class="chips" id="cl">${P.colors.map(s=>`<button type="button" data-k="${esc(s)}">${esc(s)}</button>`).join("")}</div>`:""}
+  ${out?'<p style="color:#c62828;font-weight:700">Out of stock</p>':`<strong>Quantity</strong> <select id="q" style="padding:8px;border-radius:8px;border:1px solid var(--line)">${Array.from({length:max},(_,i)=>`<option>${i+1}</option>`).join("")}</select>`}
+  <div class="acts"><button class="btn p" id="ac" ${out?"disabled":""} style="border:0">Add to cart</button><button class="btn" id="bn" ${out?"disabled":""} style="background:var(--violet);color:#fff;border:0">Buy now</button>
+  <button class="wbtn" data-w="${esc(P.id)}">${w?"♥":"♡"} Wishlist</button></div></div></div>`;
+}
+function ready(){
+  if(P.sizes.length&&!size){toast("Please select a size");return false}
+  if(P.colors.length&&!color){toast("Please select a colour");return false}
+  cartAdd(P.id,+$("#q").value||1,size,color);return true;
+}
+$("#pd").addEventListener("click",e=>{
+  const t=e.target.closest("[data-t]"),s=e.target.closest("[data-s]"),k=e.target.closest("[data-k]");
+  if(t){$("#mi").src=t.dataset.t;document.querySelectorAll(".thumbs img").forEach(i=>i.classList.toggle("on",i==t))}
+  if(s){size=s.dataset.s;document.querySelectorAll("#sz button").forEach(b=>b.classList.toggle("on",b==s))}
+  if(k){color=k.dataset.k;document.querySelectorAll("#cl button").forEach(b=>b.classList.toggle("on",b==k))}
+  if(e.target.closest("#ac")&&ready())toast("Added to cart");
+  if(e.target.closest("#bn")&&ready())location.href="cart.html";
+});
+async function reviews(){
+  if(!sb)return;$("#rv").classList.remove("hide");
+  const{data,error}=await sb.from("reviews").select("rating,comment,created_at").eq("product_id",P.id).order("created_at",{ascending:false}).limit(20);
+  $("#rl").innerHTML=error||!data.length?'<p class="note">No reviews yet.</p>':data.map(r=>`<div class="ord"><span class="rate">${r.rating} ★</span> <small style="color:var(--mute)">${new Date(r.created_at).toLocaleDateString("en-IN")}</small><p style="margin-top:6px">${esc(r.comment||"")}</p></div>`).join("");
+  const{data:{session}}=await sb.auth.getSession();
+  $(session?"#rf":"#rlogin").classList.remove("hide");
+  $("#rf").onsubmit=async e=>{e.preventDefault();
+    const{error}=await sb.from("reviews").upsert({product_id:P.id,user_id:session.user.id,rating:+$("#rr").value,comment:$("#rc").value.trim()||null},{onConflict:"product_id,user_id"});
+    if(error){$("#rm").textContent=error.message;$("#rm").className="note err"}else location.reload()};
+}
+</script></body></html>

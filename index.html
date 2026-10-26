@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Novero — Style More. Spend Less.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap">
+<div class="hero"><div class="slide"><h1>Style More.<br>Spend Less.</h1><p>Fashion, home and more at prices that make sense.</p><a class="btn" href="products.html">Shop now</a></div>
+<div class="slide alt"><h2>Up to 50% off</h2><p>Special deals, today only.</p><a class="btn" href="products.html?sort=deal">See deals</a></div></div>
+<section class="blk"><h2>Trending now</h2><div class="grid" id="g1"></div></section>
+<section class="blk"><h2>Bestsellers</h2><div class="grid" id="g2"></div></section>
+<section class="blk"><h2>New arrivals</h2><div class="grid" id="g3"></div></section>
+<section class="blk"><h2>Special deals</h2><div class="grid" id="g4"></div></section>
+</main><div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>chrome("index.html");
+load($("#g1"),{sort:"rating",limit:5});load($("#g2"),{sort:"popular",limit:10});
+load($("#g3"),{sort:"new",limit:5});load($("#g4"),{sort:"deal",limit:5});</script></body></html>

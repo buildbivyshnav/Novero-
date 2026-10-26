@@ -1,0 +1,20 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wishlist — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap"><h1 style="margin:18px 0 12px;font-size:1.4rem">Your wishlist</h1><div class="grid" id="g"></div></main>
+<div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("wishlist.html");
+async function draw(){
+  const ids=store.get("wish"),g=$("#g");
+  if(!ids.length){g.innerHTML='<p class="msg">Nothing saved yet. Tap the ♡ on any product.</p>';return}
+  try{const l=await getByIds(ids);show(g,l);if(l.length!=ids.length){store.set("wish",l.map(p=>p.id));badges()}}
+  catch(e){g.innerHTML='<p class="msg">Could not load your wishlist.</p>'}
+}
+document.addEventListener("storechange",()=>setTimeout(draw,400));
+draw();
+</script></body></html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.auth{max-width:420px;margin:28px auto;border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.tabs{display:flex;gap:8px;margin-bottom:18px}
+.tabs button{flex:1;padding:10px;border-radius:10px;background:var(--soft);font-weight:700;color:var(--mute)}
+.tabs button.on{background:var(--violet);color:#fff}
+.auth label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 4px}
+.auth input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.auth .btn{width:100%;margin-top:18px;text-align:center}
+.auth .btn[disabled]{opacity:.6}
+.note{margin-top:12px;font-size:.85rem;min-height:1.2em}
+.note.err{color:#c62828}.note.ok{color:#0a8a4a}
+.link{background:none;color:var(--violet);font-weight:600;font-size:.85rem;margin-top:12px;padding:0}
+.hide{display:none}
+</style></head><body>
+<div id="hdr"></div>
+<main class="wrap"><div class="auth">
+  <div id="out">
+    <div class="tabs"><button id="tL" class="on" type="button">Login</button><button id="tS" type="button">Sign up</button></div>
+    <form id="f" novalidate>
+      <div id="nameRow" class="hide"><label for="nm">Full name</label><input id="nm" autocomplete="name"></div>
+      <label for="em">Email</label><input id="em" type="email" autocomplete="email" required>
+      <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" minlength="6" required>
+      <button class="btn p" id="go">Login</button>
+    </form>
+    <button class="link" id="fp" type="button">Forgot password?</button>
+    <p class="note" id="msg" role="status"></p>
+  </div>
+  <div id="rec" class="hide form">
+    <h2 style="margin-bottom:6px">Set a new password</h2>
+    <label for="np">New password</label><input id="np" type="password" autocomplete="new-password" minlength="6">
+    <button class="btn p" id="sp" type="button">Save password</button>
+    <p class="note" id="rmsg" role="status"></p>
+  </div>
+  <div id="in" class="hide">
+    <h2 style="margin-bottom:6px">My account</h2>
+    <p id="who" style="color:var(--mute);margin-bottom:6px"></p>
+    <a class="btn p" style="width:100%;text-align:center" href="products.html">Continue shopping</a>
+    <a class="btn" style="width:100%;text-align:center;margin-top:10px;background:var(--soft);color:var(--ink)" href="orders.html">My orders</a>
+    <button class="btn" id="lo" style="width:100%;margin-top:10px;background:var(--soft);color:var(--ink)">Logout</button>
+  </div>
+</div></main><div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("login.html");
+let mode="login";const msg=$("#msg");
+const say=(t,c="")=>{msg.textContent=t;msg.className="note "+c};
+const next=(()=>{const n=new URLSearchParams(location.search).get("next")||"";return /^[a-z0-9-]+\.html(\?[^\s]*)?$/i.test(n)?n:"products.html"})();
+
+function setMode(m){mode=m;
+  $("#tL").classList.toggle("on",m=="login");$("#tS").classList.toggle("on",m=="signup");
+  $("#nameRow").classList.toggle("hide",m=="login");
+  $("#go").textContent=m=="login"?"Login":"Create account";
+  $("#pw").autocomplete=m=="login"?"current-password":"new-password";
+  $("#fp").classList.toggle("hide",m!="login");say("")}
+$("#tL").onclick=()=>setMode("login");$("#tS").onclick=()=>setMode("signup");
+
+function friendly(e){const m=(e&&e.message)||"Something went wrong";
+  if(/invalid login/i.test(m))return "Wrong email or password.";
+  if(/already registered/i.test(m))return "This email is already registered. Try logging in.";
+  if(/email not confirmed/i.test(m))return "Please confirm your email first. Check your inbox.";
+  if(/rate limit|too many/i.test(m))return "Too many attempts. Please wait a minute and try again.";
+  if(/password/i.test(m))return m;return m}
+
+function showUser(u){if(!$("#rec").classList.contains("hide"))return;$("#out").classList.add("hide");$("#in").classList.remove("hide");
+  $("#who").textContent=(u.user_metadata?.full_name?u.user_metadata.full_name+" · ":"")+u.email}
+
+$("#f").onsubmit=async e=>{e.preventDefault();
+  if(!sb)return say("Supabase is not connected. Check supabase-config.js.","err");
+  const email=$("#em").value.trim(),password=$("#pw").value,name=$("#nm").value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email))return say("Enter a valid email.","err");
+  if(password.length<6)return say("Password must be at least 6 characters.","err");
+  const b=$("#go");b.disabled=true;say("Please wait…");
+  try{
+    if(mode=="login"){
+      const{error}=await sb.auth.signInWithPassword({email,password});if(error)throw error;
+      location.href=next;
+    }else{
+      const{data,error}=await sb.auth.signUp({email,password,options:{data:{full_name:name}}});if(error)throw error;
+      if(data.session)location.href=next;
+      else say("Account created. Check your email to confirm, then log in.","ok");
+    }
+  }catch(err){say(friendly(err),"err")}
+  b.disabled=false;
+};
+
+$("#fp").onclick=async()=>{
+  if(!sb)return say("Supabase is not connected.","err");
+  const email=$("#em").value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email))return say("Type your email above first.","err");
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  error?say(friendly(error),"err"):say("Reset link sent. Check your email.","ok");
+};
+
+$("#lo").onclick=async()=>{await sb.auth.signOut();location.reload()};
+
+$("#sp").onclick=async()=>{
+  const p=$("#np").value;if(p.length<6)return say2("Password must be at least 6 characters.","err");
+  const{error}=await sb.auth.updateUser({password:p});
+  if(error)return say2(friendly(error),"err");
+  say2("Password updated.","ok");setTimeout(()=>location.href=location.pathname,900)};
+function say2(t,c){const n=$("#rmsg");n.textContent=t;n.className="note "+c}
+if(sb)sb.auth.onAuthStateChange(ev=>{if(ev=="PASSWORD_RECOVERY"){$("#out").classList.add("hide");$("#in").classList.add("hide");$("#rec").classList.remove("hide")}});
+(async()=>{
+  if(!sb){say("Demo mode: Supabase is not connected, so login is unavailable.","err");return}
+  const{data:{session}}=await sb.auth.getSession();
+  if(session)showUser(session.user);
+})();
+</script></body></html>

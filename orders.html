@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My orders — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap" style="max-width:760px"><h1 style="margin:18px 0 6px;font-size:1.4rem">My orders</h1><div id="ok"></div><div id="o"><div class="spin"></div></div></main>
+<div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("login.html");
+(async()=>{
+  const s=await needLogin();if(!s)return;
+  const placed=new URLSearchParams(location.search).get("placed");
+  if(placed)$("#ok").innerHTML='<div class="ok-box">Order placed! Thank you for shopping with Novero.</div>';
+  const{data,error}=await sb.from("orders").select("*,order_items(*)").eq("user_id",s.user.id).order("created_at",{ascending:false});
+  if(error){$("#o").innerHTML='<p class="msg">Could not load orders.</p>';return}
+  if(!data.length){$("#o").innerHTML='<p class="msg">No orders yet. <a href="products.html" style="color:var(--pink);font-weight:700">Start shopping</a></p>';return}
+  $("#o").innerHTML=data.map(o=>`<div class="ord"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="pill">${esc(o.status.replace(/_/g," "))}</span><small style="color:var(--mute)">${new Date(o.created_at).toLocaleString("en-IN")}</small></div>
+  <small style="color:var(--mute)">Order #${esc(o.id.slice(0,8).toUpperCase())}</small>
+  ${(o.order_items||[]).map(i=>`<div style="display:flex;gap:10px;margin:10px 0;align-items:center">${i.image_url?`<img src="${esc(i.image_url)}" alt="" style="width:50px;height:62px;object-fit:cover;border-radius:8px">`:""}<div style="flex:1"><div style="font-weight:600;font-size:.9rem">${esc(i.product_name)}</div><small style="color:var(--mute)">Qty ${i.quantity}${i.size?" · "+esc(i.size):""}${i.color?" · "+esc(i.color):""}</small></div><b>${inr(i.unit_price*i.quantity)}</b></div>`).join("")}
+  <div style="border-top:1px solid var(--line);padding-top:8px;font-size:.9rem">${o.discount>0?`Discount −${inr(o.discount)} · `:""}Delivery ${o.delivery_fee>0?inr(o.delivery_fee):"free"} · <b>Total ${inr(o.total)}</b> · Cash on delivery</div>
+  <small style="color:var(--mute)">Deliver to: ${esc(o.ship_name)}, ${esc(o.ship_address)}, ${esc(o.ship_city)}, ${esc(o.ship_state)} ${esc(o.ship_pincode)}</small></div>`).join("");
+})();
+</script></body></html>

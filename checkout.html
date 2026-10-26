@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkout — Novero</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main class="wrap" style="max-width:640px"><h1 style="margin:18px 0 6px;font-size:1.4rem">Checkout</h1>
+<div id="body"><div class="spin"></div></div></main>
+<div id="ftr"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script><script src="script.js"></script>
+<script>
+chrome("cart.html");
+const rid=(crypto.randomUUID?crypto.randomUUID():"10000000-1000-4000-8000-100000000000".replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16)));
+let session,cart=[],map={};
+(async()=>{
+  session=await needLogin();if(!session)return;
+  cart=store.get("cart");if(!cart.length){location.href="cart.html";return}
+  let prods;try{prods=await getByIds(cart.map(i=>i.id))}catch(e){$("#body").innerHTML='<p class="msg">Could not load your cart.</p>';return}
+  map=Object.fromEntries(prods.map(p=>[p.id,p]));cart=cart.filter(i=>map[i.id]);
+  if(!cart.length){location.href="cart.html";return}
+  let sub=0;const lines=cart.map(i=>{const l=final(map[i.id])*i.qty;sub+=l;return `<div style="display:flex;justify-content:space-between;gap:10px"><span>${esc(map[i.id].name)} × ${i.qty}</span><b>${inr(l)}</b></div>`}).join("");
+  const fee=sub>=499?0:49;
+  let last={};try{const{data}=await sb.from("orders").select("ship_name,ship_phone,ship_address,ship_city,ship_state,ship_pincode").eq("user_id",session.user.id).order("created_at",{ascending:false}).limit(1);last=data?.[0]||{}}catch(e){}
+  $("#body").innerHTML=`<div class="sum">${lines}<div style="border-top:1px solid var(--line);margin-top:8px;padding-top:8px"><span>Subtotal</span><b>${inr(sub)}</b></div>
+  <div><span>Delivery</span><b>${fee?inr(fee):"FREE"}</b></div><div class="tot"><span>Total (before coupon)</span><span>${inr(sub+fee)}</span></div></div>
+  <form class="form" id="f" novalidate><h2 style="font-size:1.05rem">Delivery address</h2>
+  <label for="n">Full name</label><input id="n" autocomplete="name" value="${esc(last.ship_name||"")}" required>
+  <label for="p">Mobile number (10 digits)</label><input id="p" inputmode="numeric" maxlength="10" autocomplete="tel-national" value="${esc(last.ship_phone||"")}" required>
+  <label for="a">Address</label><textarea id="a" rows="2" autocomplete="street-address" required>${esc(last.ship_address||"")}</textarea>
+  <label for="c">City</label><input id="c" autocomplete="address-level2" value="${esc(last.ship_city||"")}" required>
+  <label for="s">State</label><input id="s" autocomplete="address-level1" value="${esc(last.ship_state||"")}" required>
+  <label for="z">PIN code</label><input id="z" inputmode="numeric" maxlength="6" autocomplete="postal-code" value="${esc(last.ship_pincode||"")}" required>
+  <label for="cp">Coupon code (optional)</label><input id="cp" autocapitalize="characters">
+  <h2 style="font-size:1.05rem;margin-top:18px">Payment</h2><p class="note">Cash on delivery. Pay when your order arrives.</p>
+  <button class="btn p" id="go" style="width:100%;margin-top:16px;border:0;text-align:center">Place order</button><p class="note" id="m" role="status"></p></form>`;
+  $("#f").onsubmit=place;
+})();
+async function place(e){
+  e.preventDefault();const m=$("#m"),say=(t,c="err")=>{m.textContent=t;m.className="note "+c};
+  const v=id=>$("#"+id).value.trim();
+  if(!v("n")||!v("a")||!v("c")||!v("s"))return say("Please fill in all address fields.");
+  if(!/^[6-9][0-9]{9}$/.test(v("p")))return say("Enter a valid 10-digit mobile number.");
+  if(!/^[1-9][0-9]{5}$/.test(v("z")))return say("Enter a valid 6-digit PIN code.");
+  const b=$("#go");b.disabled=true;say("Placing your order…","ok");
+  try{
+    /* Copy the browser cart into the database cart; place_order() reads prices from the database only. */
+    let r=await sb.from("cart_items").delete().eq("user_id",session.user.id);if(r.error)throw r.error;
+    r=await sb.from("cart_items").insert(cart.map(i=>({user_id:session.user.id,product_id:i.id,quantity:Math.min(20,i.qty),size:i.size||null,color:i.color||null})));if(r.error)throw r.error;
+    const{data,error}=await sb.rpc("place_order",{p_name:v("n"),p_phone:v("p"),p_address:v("a"),p_city:v("c"),p_state:v("s"),p_pincode:v("z"),p_coupon:v("cp")||null,p_request_id:rid});
+    if(error)throw error;
+    store.set("cart",[]);location.href="orders.html?placed="+encodeURIComponent(data);
+  }catch(err){say(err.message||"Could not place the order.");b.disabled=false}
+}
+</script></body></html>
